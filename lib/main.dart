@@ -63,14 +63,17 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void updateDataList(List<dynamic> editedData) async {
-  int index = itemList.indexWhere((item) => item[0] == editedData[0]);
-  if (index != -1) {
-    itemList[index] = editedData;
+  Future<void> updateDataList(List<dynamic> newData, int index) async {
+    itemList[index] = newData;
     filteredItemList = itemList;
     await saveDataToStorage(itemList);
     setState(() {});
   }
+void addDataList(List<dynamic> newData) async {
+  itemList.add(newData);
+  filteredItemList = itemList;
+  await saveDataToStorage(itemList);
+  setState(() {});
 }
 
 
@@ -101,31 +104,37 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  void navigateToEditPage(List<dynamic> item) async {
+   void navigateToEditPage(List<dynamic> item, int index) async {
   List<dynamic>? editedData = await Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (context) => EditPage(item: item, updateData: updateDataList, deleteData: deleteData),
+      builder: (context) => EditPage(
+        item: item,
+        index: index,
+        updateData: updateDataList,
+        deleteData: deleteData,
+      ),
     ),
   );
   if (editedData != null) {
- // Wrap editedData in a list
+    // Wrap editedData in a list
   }
 }
 
   void navigateToAddPage() async {
-    List<List<dynamic>> newDataList = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const AddPage(),
-      ),
-    );
-    if (newDataList != null) {
-      updateDataList(newDataList);
-    }
+  List<List<dynamic>> newDataList = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => AddPage(addDataList: addDataList),
+    ),
+  );
+  if (newDataList != null) {
+    addDataList(newDataList[0]);
   }
+}
 
-  void deleteData(List<dynamic> item) async {
+
+  Future<void> deleteData(List<dynamic> item) async {
   itemList.remove(item);
   filteredItemList = itemList;
   await saveDataToStorage(itemList);
@@ -163,40 +172,40 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Expanded(
               child: ListView.builder(
-                itemCount: filteredItemList.length,
-                itemBuilder: (context, index) {
-                  String mbtiType = filteredItemList[index][1];
-                  Color containerColor = _getContainerColor(mbtiType);
+              itemCount: filteredItemList.length,
+              itemBuilder: (context, index) {
+                String mbtiType = filteredItemList[index][1];
+                Color containerColor = _getContainerColor(mbtiType);
 
-                  return ListTile(
-                    onTap: () => navigateToEditPage(filteredItemList[index]),
-                    title: Text(
-                      filteredItemList[index][0],
+                return ListTile(
+                  onTap: () => navigateToEditPage(filteredItemList[index], index), // Pass the item and index
+                  title: Text(
+                    filteredItemList[index][0],
+                    style: const TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                  trailing: Container(
+                    width: 80.0,
+                    padding: const EdgeInsets.all(13.0),
+                    decoration: BoxDecoration(
+                      color: containerColor,
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    child: Text(
+                      filteredItemList[index][1],
+                      textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontFamily: 'Roboto',
-                        fontSize: 16.0,
-                        fontWeight: FontWeight.normal,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(150, 0, 0, 0),
                       ),
                     ),
-                    trailing: Container(
-                      width: 80.0,
-                      padding: const EdgeInsets.all(13.0),
-                      decoration: BoxDecoration(
-                        color: containerColor,
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      child: Text(
-                        filteredItemList[index][1],
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(150, 0, 0, 0),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
+            )
             ),
           ],
         ),
@@ -240,7 +249,9 @@ class _MyHomePageState extends State<MyHomePage> {
 }
 
 class AddPage extends StatefulWidget {
-  const AddPage({Key? key}) : super(key: key);
+  final Function(List<dynamic>) addDataList;
+
+  const AddPage({Key? key, required this.addDataList}) : super(key: key);
 
   @override
   _AddPageState createState() => _AddPageState();
@@ -270,11 +281,12 @@ class _AddPageState extends State<AddPage> {
   ];
 
   void addData() {
-    String name = nameController.text;
-    List<dynamic> newData = [name, selectedMBTI];
-    List<List<dynamic>> newDataList = [newData];
-    Navigator.pop(context, newDataList);
-  }
+  String name = nameController.text;
+  List<dynamic> newData = [name, selectedMBTI];
+  widget.addDataList(newData); // Call the updateData callback
+  Navigator.pop(context);
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -379,15 +391,14 @@ class _AddPageState extends State<AddPage> {
 
 class EditPage extends StatefulWidget {
   final List<dynamic> item;
-  final Function(List<dynamic>) deleteData;
-  final Function(List<dynamic>) updateData;
-
-  EditPage({required this.item, required this.updateData, required this.deleteData});
+  final int index;
+  final Future<void> Function(List<dynamic>, int) updateData;
+  final Future<void> Function(List<dynamic>) deleteData;
+  EditPage({required this.item, required this.index, required this.updateData, required this.deleteData});
 
   @override
   _EditPageState createState() => _EditPageState();
 }
-
 
 class _EditPageState extends State<EditPage> {
   String selectedMBTI = '';
@@ -419,13 +430,16 @@ class _EditPageState extends State<EditPage> {
     selectedMBTI = widget.item[1];
   }
 
-  void editData() {
+  void editData() async {
   String name = nameController.text;
   List<dynamic> editedData = [name, selectedMBTI];
-  widget.updateData(editedData); // Update the item
+
+  // Update the existing item
+  widget.item[0] = name;
+  widget.item[1] = selectedMBTI;
+  await widget.updateData(widget.item, widget.index);
   Navigator.pop(context, editedData);
 }
-
 
   void deleteData() {
     showDialog(
@@ -453,7 +467,7 @@ class _EditPageState extends State<EditPage> {
     });
   }
 
-  @override
+   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -557,7 +571,7 @@ class _EditPageState extends State<EditPage> {
                     onPressed: () {
                       widget.deleteData(widget.item); // Delete the item
                       Navigator.pop(context);
-                  },
+                    },
                     style: ElevatedButton.styleFrom(
                       primary: Colors.red,
                       foregroundColor: Colors.white,
@@ -578,4 +592,3 @@ class _EditPageState extends State<EditPage> {
     );
   }
 }
-
