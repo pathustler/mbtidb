@@ -59,8 +59,23 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
-  
-
+  assets:
+    - assets/images/ESFP.jpeg
+    - assets/images/ESFJ.jpeg
+    - assets/images/ESTP.jpeg
+    - assets/images/ESTJ.jpeg
+    - assets/images/ENTP.jpeg
+    - assets/images/ENTJ.jpeg
+    - assets/images/ENFJ.jpeg
+    - assets/images/ENFP.jpeg
+    - assets/images/ISFP.jpeg
+    - assets/images/ISFJ.jpeg
+    - assets/images/ISTP.jpeg
+    - assets/images/ISTJ.jpeg
+    - assets/images/INFP.jpeg
+    - assets/images/INFJ.jpeg
+    - assets/images/INTP.jpeg
+    - assets/images/INTJ.jpeg
 
   # To add assets to your application, add an assets section, like this:
   # assets:

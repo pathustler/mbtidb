@@ -171,42 +171,75 @@ void addDataList(List<dynamic> newData) async {
               ),
             ),
             Expanded(
+              
               child: ListView.builder(
-              itemCount: filteredItemList.length,
-              itemBuilder: (context, index) {
-                String mbtiType = filteredItemList[index][1];
-                Color containerColor = _getContainerColor(mbtiType);
+                itemCount: filteredItemList.length,
+                itemBuilder: (context, index) {
+                  String mbtiType = filteredItemList[index][1];
+                  Color containerColor = _getContainerColor(mbtiType);
+                  String imagePath = '';
 
-                return ListTile(
-                  onTap: () => navigateToEditPage(filteredItemList[index], index), // Pass the item and index
-                  title: Text(
-                    filteredItemList[index][0],
-                    style: const TextStyle(
-                      fontFamily: 'Roboto',
-                      fontSize: 16.0,
-                      fontWeight: FontWeight.normal,
-                    ),
-                  ),
-                  trailing: Container(
-                    width: 80.0,
-                    padding: const EdgeInsets.all(13.0),
-                    decoration: BoxDecoration(
-                      color: containerColor,
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    child: Text(
-                      filteredItemList[index][1],
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color.fromARGB(150, 0, 0, 0),
+                  // Assign image path based on MBTI type
+                  imagePath = 'assets/images/$mbtiType.jpeg';
+                  // Add more conditions for other MBTI types
+                  
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 12.0),
+                      height: 80.0,
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(255, 48, 59, 66),
+                        borderRadius: BorderRadius.circular(15.0),
+                      ),
+                      child: Center(
+                        child: ListTile(
+                          onTap: () => navigateToEditPage(filteredItemList[index], index),
+                          title: Text(
+                            filteredItemList[index][0],
+                            style: const TextStyle(
+                              fontFamily: 'Roboto',
+                              fontSize: 16.0,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                          leading: Container(
+                            width: 50.0,
+                            height: 50.0,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              image: DecorationImage(
+                                image: AssetImage(imagePath),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          trailing: Container(
+                            width: 80.0,
+                            padding: const EdgeInsets.all(13.0),
+                            decoration: BoxDecoration(
+                              color: containerColor,
+                              borderRadius: BorderRadius.circular(10.0),
+                            ),
+                            child: Text(
+                              filteredItemList[index][1],
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color.fromARGB(150, 0, 0, 0),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
-            )
+                  );
+                },
+              ),
             ),
+          
+
+
           ],
         ),
       ),
@@ -562,7 +595,7 @@ class _EditPageState extends State<EditPage> {
                         fontWeight: FontWeight.normal,
                       ),
                     ),
-                    child: const Text('Submit'),
+                    child: const Text('Save'),
                   ),
                 ),
                 const SizedBox(width: 20.0),
@@ -573,8 +606,8 @@ class _EditPageState extends State<EditPage> {
                       Navigator.pop(context);
                     },
                     style: ElevatedButton.styleFrom(
-                      primary: Colors.red,
-                      foregroundColor: Colors.white,
+                      primary: Color.fromARGB(255, 187, 41, 30),
+                      foregroundColor: const Color.fromARGB(255, 0, 0, 0),
                       textStyle: const TextStyle(
                         fontFamily: 'Roboto',
                         fontSize: 16.0,
