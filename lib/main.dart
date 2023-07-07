@@ -63,12 +63,16 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void updateDataList(List<List<dynamic>> newDataList) async {
-    itemList.addAll(newDataList);
+  void updateDataList(List<dynamic> editedData) async {
+  int index = itemList.indexWhere((item) => item[0] == editedData[0]);
+  if (index != -1) {
+    itemList[index] = editedData;
     filteredItemList = itemList;
     await saveDataToStorage(itemList);
     setState(() {});
   }
+}
+
 
   Future<void> saveDataToStorage(List<List<dynamic>> data) async {
     final box = GetStorage();
@@ -101,11 +105,11 @@ class _MyHomePageState extends State<MyHomePage> {
   List<dynamic>? editedData = await Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (context) => EditPage(item: item, deleteData: deleteData),
+      builder: (context) => EditPage(item: item, updateData: updateDataList, deleteData: deleteData),
     ),
   );
   if (editedData != null) {
-    updateDataList([editedData]); // Wrap editedData in a list
+ // Wrap editedData in a list
   }
 }
 
@@ -376,8 +380,9 @@ class _AddPageState extends State<AddPage> {
 class EditPage extends StatefulWidget {
   final List<dynamic> item;
   final Function(List<dynamic>) deleteData;
+  final Function(List<dynamic>) updateData;
 
-  EditPage({required this.item, required this.deleteData});
+  EditPage({required this.item, required this.updateData, required this.deleteData});
 
   @override
   _EditPageState createState() => _EditPageState();
@@ -415,10 +420,12 @@ class _EditPageState extends State<EditPage> {
   }
 
   void editData() {
-    String name = nameController.text;
-    List<dynamic> editedData = [name, selectedMBTI];
-    Navigator.pop(context, editedData);
-  }
+  String name = nameController.text;
+  List<dynamic> editedData = [name, selectedMBTI];
+  widget.updateData(editedData); // Update the item
+  Navigator.pop(context, editedData);
+}
+
 
   void deleteData() {
     showDialog(
