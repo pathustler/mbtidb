@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_storage/get_storage.dart';
@@ -26,6 +27,7 @@ class MyApp extends StatelessWidget {
         secondaryHeaderColor: Colors.purple[900],
       ),
       home: const MyHomePage(title: 'MBTI Database'),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -58,6 +60,7 @@ class _MyHomePageState extends State<MyHomePage> {
       List<dynamic> data = jsonDecode(encodedData);
       setState(() {
         itemList = List<List<dynamic>>.from(data);
+        itemList.sort((a, b) => int.parse(b[2]).compareTo(int.parse(a[2])));
         filteredItemList = itemList;
       });
     }
@@ -71,6 +74,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 void addDataList(List<dynamic> newData) async {
   itemList.add(newData);
+  itemList.sort((a, b) => int.parse(b[2]).compareTo(int.parse(a[2])));
   filteredItemList = itemList;
   await saveDataToStorage(itemList);
   setState(() {});
@@ -176,7 +180,9 @@ void addDataList(List<dynamic> newData) async {
                 itemCount: filteredItemList.length,
                 itemBuilder: (context, index) {
                   String mbtiType = filteredItemList[index][1];
+                  String iq =filteredItemList[index][2];
                   Color containerColor = _getContainerColor(mbtiType);
+                  Color iqcontainerColor = _getIQColor(iq);
                   String imagePath = '';
 
                   // Assign image path based on MBTI type
@@ -195,14 +201,42 @@ void addDataList(List<dynamic> newData) async {
                       child: Center(
                         child: ListTile(
                           onTap: () => navigateToEditPage(filteredItemList[index], index),
-                          title: Text(
-                            filteredItemList[index][0],
-                            style: const TextStyle(
-                              fontFamily: 'Roboto',
-                              fontSize: 16.0,
-                              fontWeight: FontWeight.normal,
+                          title: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0), // Adjust the vertical padding as needed
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  filteredItemList[index][0],
+                                  style: const TextStyle(
+                                    fontFamily: 'Roboto',
+                                    fontSize: 18.0,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Container(
+                                  width: 80.0,
+                                  padding: const EdgeInsets.all(12.0),
+                                  decoration: BoxDecoration(
+                                    color: iqcontainerColor,
+                                    borderRadius: BorderRadius.circular(10.0),
+                                  ),
+                                  child: Text(
+                                    filteredItemList[index][2],
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: Color.fromARGB(139, 255, 255, 255),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+
                           leading: Container(
                             width: 50.0,
                             height: 50.0,
@@ -234,10 +268,11 @@ void addDataList(List<dynamic> newData) async {
                       ),
                     ),
                   );
+
                 },
               ),
             ),
-          
+
 
 
           ],
@@ -279,7 +314,24 @@ void addDataList(List<dynamic> newData) async {
     }
     return Colors.transparent; // Default color if no matching MBTI type
   }
+  Color _getIQColor(String iq){
+  if (int.parse(iq)>150){
+    return Color.fromARGB(72, 95, 0, 183);
+  }
+  else if (int.parse(iq)>120){
+    return Color.fromARGB(61, 0, 128, 183);
+  }
+  else if (int.parse(iq)>=100){
+    return Color.fromARGB(63, 61, 183, 0);
+  }
+  else if (int.parse(iq)<100){
+    return Color.fromARGB(58, 186, 186, 186);
+  }
+  return Color.fromARGB(58, 186, 186, 186);
 }
+
+}
+
 
 class AddPage extends StatefulWidget {
   final Function(List<dynamic>) addDataList;
@@ -292,7 +344,10 @@ class AddPage extends StatefulWidget {
 
 class _AddPageState extends State<AddPage> {
   String selectedMBTI = 'ESFP';
+  String selectedExtrovertedFunction = 'None Selected';
+  String selectedIntrovertedFunction = 'None Selected';
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController iqController = TextEditingController(text: "100");
 
   List<String> mbtiTypes = [
     'ESFP',
@@ -313,113 +368,275 @@ class _AddPageState extends State<AddPage> {
     'INTJ',
   ];
 
+  List<String> extrovertedFunctions = [
+    'None Selected',
+    'te',
+    'fe',
+    'se',
+    'ne',
+  ];
+
+  List<String> introvertedFunctions = [
+    'None Selected',
+    'ti',
+    'fi',
+    'si',
+    'ni',
+  ];
+
+  List<String> availableIntrovertedFunctions = [];
+
   void addData() {
   String name = nameController.text;
-  List<dynamic> newData = [name, selectedMBTI];
+  String iq = iqController.text;
+  List<dynamic> newData = [name, selectedMBTI,iq];
   widget.addDataList(newData); // Call the updateData callback
   Navigator.pop(context);
 }
 
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 21, 30, 40),
-        centerTitle: true,
-        title: const Text(
-          'Add MBTI',
-          style: TextStyle(
-            fontSize: 22,
+Widget build(BuildContext context) {
+  availableIntrovertedFunctions = _getAvailableIntrovertedFunctions(selectedExtrovertedFunction);
+  var predmbti = _getmbti(selectedExtrovertedFunction, selectedIntrovertedFunction);
+
+  return Scaffold(
+    resizeToAvoidBottomInset : false,
+    appBar: AppBar(
+      backgroundColor: const Color.fromARGB(255, 21, 30, 40),
+      centerTitle: true,
+      title: const Text(
+        'Add MBTI',
+        style: TextStyle(
+          fontSize: 22,
+        ),
+      ),
+    ),
+    body: Container(
+      color: const Color.fromARGB(255, 21, 30, 40),
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'Name',
+            style: TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 18.0,
+              fontWeight: FontWeight.normal,
+              color: Colors.white,
+            ),
           ),
-        ),
-      ),
-      body: Container(
-        color: const Color.fromARGB(255, 21, 30, 40),
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text(
-              'Name',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: 18.0,
-                fontWeight: FontWeight.normal,
-                color: Colors.white,
+          
+          const SizedBox(height: 10.0),
+          TextField(
+            controller: nameController,
+            style: const TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 16.0,
+              fontWeight: FontWeight.normal,
+              color: Colors.white,
+            ),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.grey[900],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.0),
               ),
             ),
-            const SizedBox(height: 10.0),
-            TextField(
-              controller: nameController,
-              style: const TextStyle(
+          ),
+          const SizedBox(height: 20.0),
+          
+          TextField(
+            controller: iqController,
+            decoration: const InputDecoration(labelText: "IQ"),
+            keyboardType: TextInputType.number,
+            inputFormatters: <TextInputFormatter>[
+    FilteringTextInputFormatter.digitsOnly]),
+           const SizedBox(height: 20.0),
+          const Text(
+            'Extroverted Function',
+            style: TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 18.0,
+              fontWeight: FontWeight.normal,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 10.0),
+          DropdownButton<String>(
+            value: selectedExtrovertedFunction,
+            icon: const Icon(Icons.arrow_drop_down),
+            iconSize: 24,
+            elevation: 16,
+            style: const TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 16.0,
+              fontWeight: FontWeight.normal,
+              color: Colors.white,
+            ),
+            dropdownColor: Colors.grey[900],
+            onChanged: (String? newValue) {
+              setState(() {
+                selectedExtrovertedFunction = newValue!;
+                selectedIntrovertedFunction = 'None Selected'; // Reset the selected introverted function
+              });
+            },
+            items: extrovertedFunctions.map<DropdownMenuItem<String>>((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 20.0),
+          const Text(
+            'Introverted Function',
+            style: TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 18.0,
+              fontWeight: FontWeight.normal,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 10.0),
+          DropdownButton<String>(
+            value: selectedIntrovertedFunction,
+            icon: const Icon(Icons.arrow_drop_down),
+            iconSize: 24,
+            elevation: 16,
+            style: const TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 16.0,
+              fontWeight: FontWeight.normal,
+              color: Colors.white,
+            ),
+            dropdownColor: Colors.grey[900],
+            onChanged: (String? newValue) {
+              setState(() {
+                selectedIntrovertedFunction = newValue!;
+              });
+            },
+            items: availableIntrovertedFunctions.map<DropdownMenuItem<String>>((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 20.0),
+          const Text(
+            'MBTI Type',
+            style: TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 18.0,
+              fontWeight: FontWeight.normal,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 10.0),
+          DropdownButton<String>(
+            value: selectedMBTI,
+            icon: const Icon(Icons.arrow_drop_down),
+            iconSize: 24,
+            elevation: 16,
+            style: const TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 16.0,
+              fontWeight: FontWeight.normal,
+              color: Colors.white,
+            ),
+            dropdownColor: Colors.grey[900],
+            onChanged: (String? newValue) {
+              setState(() {
+                selectedMBTI = newValue!;
+              });
+            },
+            items: mbtiTypes.map<DropdownMenuItem<String>>((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20.0),
+           
+          Text(
+            'Predicted MBTI: $predmbti',
+            style: TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 18.0,
+              fontWeight: FontWeight.normal,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 0.0),
+          ElevatedButton(
+            onPressed: addData,
+            style: ElevatedButton.styleFrom(
+              primary: const Color.fromARGB(255, 200, 60, 185),
+              foregroundColor: Colors.black,
+              textStyle: const TextStyle(
                 fontFamily: 'Roboto',
                 fontSize: 16.0,
                 fontWeight: FontWeight.normal,
-                color: Colors.white,
-              ),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.grey[900],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
               ),
             ),
-            const SizedBox(height: 20.0),
-            const Text(
-              'MBTI Type',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: 18.0,
-                fontWeight: FontWeight.normal,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 10.0),
-            DropdownButton<String>(
-              value: selectedMBTI,
-              icon: const Icon(Icons.arrow_drop_down),
-              iconSize: 24,
-              elevation: 16,
-              style: const TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: 16.0,
-                fontWeight: FontWeight.normal,
-                color: Colors.white,
-              ),
-              dropdownColor: Colors.grey[900],
-              onChanged: (String? newValue) {
-                setState(() {
-                  selectedMBTI = newValue!;
-                });
-              },
-              items: mbtiTypes.map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20.0),
-            ElevatedButton(
-              onPressed: addData,
-              style: ElevatedButton.styleFrom(
-                primary: const Color.fromARGB(255, 200, 60, 185),
-                foregroundColor: Colors.black,
-                textStyle: const TextStyle(
-                  fontFamily: 'Roboto',
-                  fontSize: 16.0,
-                  fontWeight: FontWeight.normal,
-                ),
-              ),
-              child: const Text('Add'),
-            ),
-          ],
-        ),
+            child: const Text('Add'),
+          ),
+        ],
       ),
-    );
+    ),
+  );
+}
+}
+List<String> _getAvailableIntrovertedFunctions(String extrovertedFunction) {
+  switch (extrovertedFunction) {
+    case 'te':
+    case 'fe':
+      return ['None Selected', 'si', 'ni'];
+    case 'se':
+    case 'ne':
+      return ['None Selected', 'ti', 'fi'];
+    default:
+      return ['None Selected'];
   }
+}
+
+String _getmbti(String extrovertedFunction, String introvertedFunction){
+  switch(extrovertedFunction){
+    case 'te':
+      switch(introvertedFunction){
+        case 'ni':
+          return "XNTJ";
+        case 'si':
+          return "XSTJ";
+      }
+    case 'se':
+      switch(introvertedFunction){
+        case 'ti':
+          return "XSTP";
+        case 'fi':
+          return "XSFP";
+      }
+    case 'fe':
+      switch(introvertedFunction){
+        case 'ni':
+          return "XNFJ";
+        case 'si':
+          return "XSFJ";
+      }
+    case 'ne':
+      switch(introvertedFunction){
+        case 'ti':
+          return "XNTP";
+        case 'fi':
+          return "XNFP";
+      }
+  }
+  return "None";
 }
 
 class EditPage extends StatefulWidget {
@@ -436,6 +653,7 @@ class EditPage extends StatefulWidget {
 class _EditPageState extends State<EditPage> {
   String selectedMBTI = '';
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController iqController = TextEditingController(text: "100");
 
   List<String> mbtiTypes = [
     'ESFP',
@@ -460,17 +678,21 @@ class _EditPageState extends State<EditPage> {
   void initState() {
     super.initState();
     nameController.text = widget.item[0];
+    iqController.text = widget.item[2];
     selectedMBTI = widget.item[1];
   }
 
   void editData() async {
   String name = nameController.text;
-  List<dynamic> editedData = [name, selectedMBTI];
+  String iq = iqController.text;
+  List<dynamic> editedData = [name, selectedMBTI, iq];
 
   // Update the existing item
   widget.item[0] = name;
   widget.item[1] = selectedMBTI;
+  widget.item[2] = iq;
   await widget.updateData(widget.item, widget.index);
+
   Navigator.pop(context, editedData);
 }
 
@@ -503,6 +725,7 @@ class _EditPageState extends State<EditPage> {
    @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 21, 30, 40),
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 21, 30, 40),
         centerTitle: true,
@@ -513,7 +736,7 @@ class _EditPageState extends State<EditPage> {
           ),
         ),
       ),
-      body: Container(
+      body: SingleChildScrollView( child:Container(
         color: const Color.fromARGB(255, 21, 30, 40),
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -546,6 +769,13 @@ class _EditPageState extends State<EditPage> {
               ),
             ),
             const SizedBox(height: 20.0),
+            TextField(
+            controller: iqController,
+            decoration: const InputDecoration(labelText: "IQ"),
+            keyboardType: TextInputType.number,
+            inputFormatters: <TextInputFormatter>[
+    FilteringTextInputFormatter.digitsOnly]),
+           const SizedBox(height: 20.0),
             const Text(
               'MBTI Type',
               style: TextStyle(
@@ -581,6 +811,7 @@ class _EditPageState extends State<EditPage> {
               }).toList(),
             ),
             const SizedBox(height: 20.0),
+            
             Row(
               children: [
                 Expanded(
@@ -621,7 +852,7 @@ class _EditPageState extends State<EditPage> {
             ),
           ],
         ),
-      ),
+      ),),
     );
   }
 }
